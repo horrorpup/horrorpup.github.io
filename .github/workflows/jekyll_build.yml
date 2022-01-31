@@ -1,0 +1,43 @@
+name: Jekyll Source Build
+
+on:
+  push:
+    branches:
+      - jekyll-non-root
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Cloning source branch
+      uses: actions/checkout@v2
+      with:
+        ref: 'jekyll-non-root'
+        path: 'jekyll-non-root'
+
+    - name: Building site in the jekyll/builder container
+      run: |
+        docker run \
+        -v ${{ github.workspace }}/jekyll_source:/srv/jekyll -v ${{ github.workspace }}/jekyll_source/_site:/srv/jekyll/_site \
+        jekyll/builder:latest /bin/bash -c "chmod -R 777 /srv/jekyll && jekyll build --future"
+
+    - name: Copying _site content to build folder
+      run: cp -R ${{ github.workspace }}/jekyll_source/_site/* ${{ github.workspace }}/build
+
+    - name: Commit files
+      run: |
+        cd ${{ github.workspace }}/build
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add *
+        git commit -m "Jekyll build" -a
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        directory: ${{ github.workspace }}/build
+        branch: 'jekyll-non-root'
+        github_token: ${{ secrets.GITHUB_TOKEN }}
